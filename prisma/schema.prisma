@@ -1,0 +1,70 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+    provider = "prisma-client-js"
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+}
+
+// ---------- ENUMS ----------
+enum RewardType {
+    badge
+    bonus_crypto
+    discount_commission
+}
+
+enum ProgressEnum {
+    INPROGRESS
+    BLOCKED
+    FINISHED
+}
+
+model AchievementCategory {
+    id           String        @id @default(cuid())
+    key          String        @unique
+    name         Json // {"en": "English", "ru": "Русский", "tr": "Türkçe", "fr": "Français", "de": "Deutsch", "ar": "العربية", "gr": "Ελληνικά"}
+    achievements Achievement[]
+}
+
+model Achievement {
+    id          String                    @id @default(cuid())
+    title       Json // {"en": "English Title", "ru": "Русский заголовок", ...}
+    description Json // {"en": "English description", "ru": "Русское описание", ...}
+    icon        String?
+    hidden      Boolean                   @default(false)
+    target      Int?
+    categoryId  String
+    category    AchievementCategory       @relation(fields: [categoryId], references: [id])
+    reward      Reward?
+    progress    UserAchievementProgress[]
+}
+
+model Reward {
+    id            String      @id @default(cuid())
+    type          RewardType
+    title         Json // {"en": "English title", "ru": "Русский заголовок", ...}
+    description   Json // {"en": "English description", "ru": "Русское описание", ...}
+    icon          String?
+    isApplicable  Boolean     @default(false)
+    details       Json?
+    achievementId String      @unique
+    achievement   Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+}
+
+// ---------- ПРОГРЕСС ПОЛЬЗОВАТЕЛЯ ----------
+model UserAchievementProgress {
+    id            String       @id @default(cuid())
+    userId        String
+    achievementId String
+    progress      ProgressEnum
+    currentStep   Int?
+    createdAt     DateTime     @default(now())
+    updatedAt     DateTime     @updatedAt
+    achievement   Achievement  @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+
+    @@unique([userId, achievementId])
+}
