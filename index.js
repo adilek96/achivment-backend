@@ -27,6 +27,8 @@ app.use(
       "http://localhost:3001",
       "http://127.0.0.1:3001",
       "https://achivment-front.vercel.app",
+      "https://achivment-front-git-main-achivment-front.vercel.app",
+      "https://achivment-front-git-main-adilek96s-projects.vercel.app",
     ],
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
