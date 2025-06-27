@@ -883,6 +883,23 @@ app.post("/rewards", async (req, res) => {
       achievementId,
     } = req.body;
 
+    // Валидация типа награды
+    const validRewardTypes = [
+      "badge",
+      "bonus_crypto",
+      "discount_commission",
+      "cat_accessories",
+      "visual_effects",
+    ];
+    if (type && !validRewardTypes.includes(type)) {
+      return res.status(400).json({
+        error: `Invalid reward type. Must be one of: ${validRewardTypes.join(
+          ", "
+        )}`,
+        receivedType: type,
+      });
+    }
+
     // Конвертируем строки в объекты переводов
     const titleTranslations =
       typeof title === "string" ? { [DEFAULT_LANGUAGE]: title } : title;
@@ -908,7 +925,13 @@ app.post("/rewards", async (req, res) => {
     });
     res.status(201).json(reward);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error("Error in POST /rewards:", error);
+    console.error("Request body:", req.body);
+    res.status(500).json({
+      error: error.message,
+      details: error.stack,
+      requestBody: req.body,
+    });
   }
 });
 
@@ -924,6 +947,23 @@ app.patch("/rewards/:id", async (req, res) => {
       details,
       achievementId,
     } = req.body;
+
+    // Валидация типа награды
+    const validRewardTypes = [
+      "badge",
+      "bonus_crypto",
+      "discount_commission",
+      "cat_accessories",
+      "visual_effects",
+    ];
+    if (type && !validRewardTypes.includes(type)) {
+      return res.status(400).json({
+        error: `Invalid reward type. Must be one of: ${validRewardTypes.join(
+          ", "
+        )}`,
+        receivedType: type,
+      });
+    }
 
     // Конвертируем строки в объекты переводов
     const titleTranslations =
@@ -953,7 +993,13 @@ app.patch("/rewards/:id", async (req, res) => {
     res.json(reward);
   } catch (error) {
     console.error("Error in PATCH /rewards/:id:", error);
-    res.status(500).json({ error: error.message });
+    console.error("Request body:", req.body);
+    console.error("Request params:", req.params);
+    res.status(500).json({
+      error: error.message,
+      details: error.stack,
+      requestBody: req.body,
+    });
   }
 });
 
