@@ -148,7 +148,13 @@ const options = {
             },
             type: {
               type: "string",
-              enum: ["badge", "bonus_crypto", "discount_commission"],
+              enum: [
+                "badge",
+                "bonus_crypto",
+                "discount_commission",
+                "cat_accessories",
+                "visual_effects",
+              ],
             },
             description: {
               type: "object",
@@ -738,7 +744,7 @@ app.delete("/achievements/:id", async (req, res) => {
  *             properties:
  *               type:
  *                 type: string
- *                 enum: [badge, bonus_crypto, discount_commission]
+ *                 enum: [badge, bonus_crypto, discount_commission, cat_accessories, visual_effects]
  *               title:
  *                 type: string
  *               description:
@@ -792,7 +798,7 @@ app.delete("/achievements/:id", async (req, res) => {
  *             properties:
  *               type:
  *                 type: string
- *                 enum: [badge, bonus_crypto, discount_commission]
+ *                 enum: [badge, bonus_crypto, discount_commission, cat_accessories, visual_effects]
  *               description:
  *                 type: object
  *                 description: Объект с переводами описания

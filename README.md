@@ -118,7 +118,7 @@ cd /opt/achievement-api
 ### Reward
 
 - `id`: Уникальный идентификатор
-- `type`: Тип награды (badge, bonus_crypto, discount_commission)
+- `type`: Тип награды (badge, bonus_crypto, discount_commission, cat_accessories, visual_effects)
 - `description`: Описание награды
 - `icon`: URL иконки
 - `isApplicable`: Применимость
