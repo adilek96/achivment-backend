@@ -103,7 +103,7 @@ fi
 
 # Запуск приложения через PM2
 log "Запускаем приложение через PM2..."
-pm2 start ecosystem.config.js --env production
+pm2 start ecosystem.config.cjs --env production
 
 # Ожидание запуска
 log "Ожидаем запуска приложения..."
