@@ -138,6 +138,10 @@ const options = {
             categoryId: {
               type: "string",
             },
+            reward: {
+              $ref: "#/components/schemas/Reward",
+              description: "Награда за достижение (может быть null)",
+            },
           },
         },
         Reward: {
@@ -155,22 +159,31 @@ const options = {
                 "cat_accessories",
                 "visual_effects",
               ],
+              description: "Тип награды",
+            },
+            title: {
+              type: "object",
+              description: "Объект с переводами заголовка награды",
             },
             description: {
               type: "object",
-              description: "Объект с переводами описания",
+              description: "Объект с переводами описания награды",
             },
             icon: {
               type: "string",
+              description: "URL иконки награды",
             },
             isApplicable: {
               type: "boolean",
+              description: "Применимость награды",
             },
             details: {
               type: "object",
+              description: "Дополнительные детали награды",
             },
             achievementId: {
               type: "string",
+              description: "ID связанного достижения",
             },
           },
         },
@@ -271,7 +284,31 @@ app.get("/health/db", async (req, res) => {
  *                 name:
  *                   en: "Beginner"
  *                   ru: "Начинающий"
- *                 achievements: []
+ *                 achievements:
+ *                   - id: "cmcdbzw5c0000lzgwqdktz0zl"
+ *                     title:
+ *                       en: "First Achievement"
+ *                       ru: "Первое достижение"
+ *                     description:
+ *                       en: "Complete your first task"
+ *                       ru: "Выполните первое задание"
+ *                     icon: "🎯"
+ *                     hidden: false
+ *                     target: 1
+ *                     categoryId: "cmcdbzw5c0000lzgwqdktz0zl"
+ *                     reward:
+ *                       id: "cmcdbzw5c0000lzgwqdktz0zl"
+ *                       type: "badge"
+ *                       title:
+ *                         en: "First Badge"
+ *                         ru: "Первый значок"
+ *                       description:
+ *                         en: "Your first achievement badge"
+ *                         ru: "Ваш первый значок достижения"
+ *                       icon: "🏆"
+ *                       isApplicable: true
+ *                       details: {}
+ *                       achievementId: "cmcdbzw5c0000lzgwqdktz0zl"
  *   post:
  *     summary: Создать категорию
  *     requestBody:
@@ -384,15 +421,43 @@ app.get("/health/db", async (req, res) => {
 app.get("/categories", async (req, res) => {
   try {
     const lang = req.query.lang; // ?lang=ru
-    const rows = await prisma.achievementCategory.findMany({
-      include: { achievements: true },
-    });
 
+    const rows = await prisma.achievementCategory.findMany({
+      include: {
+        achievements: { include: { reward: true } },
+      },
+    });
+    // ── 3. Локализуем всё нужное ───────────────────────
     const categories = rows.map((row) => ({
       ...row,
+
+      // name категории
       name: lang
-        ? pickLang(row.name, lang) // строка
-        : normalizeNameTranslations(row.name), // полный набор
+        ? pickLang(row.name, lang)
+        : normalizeNameTranslations(row.name),
+
+      // title + description у достижений
+      achievements: row.achievements.map((ach) => ({
+        ...ach,
+        title: lang
+          ? pickLang(ach.title, lang)
+          : normalizeNameTranslations(ach.title),
+        description: lang
+          ? pickLang(ach.description, lang)
+          : normalizeNameTranslations(ach.description),
+
+        reward: ach.reward
+          ? {
+              ...ach.reward,
+              title: lang
+                ? pickLang(ach.reward.title, lang)
+                : normalizeNameTranslations(ach.reward.title),
+              description: lang
+                ? pickLang(ach.reward.description, lang)
+                : normalizeNameTranslations(ach.reward.description),
+            }
+          : null,
+      })),
     }));
 
     res.json(categories);
@@ -404,18 +469,45 @@ app.get("/categories", async (req, res) => {
 
 app.get("/categories/:id", async (req, res) => {
   try {
-    const lang = req.query.lang;
+    // 1 ⟶ нормализуем язык (“ru‑RU” → “ru”)
+    const rawLang = req.query.lang;
+    const lang = rawLang?.split(/[-_]/)[0]?.toLowerCase();
+
+    // 2 ⟶ берём категорию вместе с достижениями
     const row = await prisma.achievementCategory.findUnique({
       where: { id: req.params.id },
-      include: { achievements: true },
+      include: { achievements: { include: { reward: true } } },
     });
     if (!row) return res.status(404).json({ error: "Category not found" });
 
+    // 3 ⟶ локализуем всё нужное
     const category = {
       ...row,
       name: lang
         ? pickLang(row.name, lang)
         : normalizeNameTranslations(row.name),
+
+      achievements: row.achievements.map((ach) => ({
+        ...ach,
+        title: lang
+          ? pickLang(ach.title, lang)
+          : normalizeNameTranslations(ach.title),
+        description: lang
+          ? pickLang(ach.description, lang)
+          : normalizeNameTranslations(ach.description),
+
+        reward: ach.reward
+          ? {
+              ...ach.reward,
+              title: lang
+                ? pickLang(ach.reward.title, lang)
+                : normalizeNameTranslations(ach.reward.title),
+              description: lang
+                ? pickLang(ach.reward.description, lang)
+                : normalizeNameTranslations(ach.reward.description),
+            }
+          : null,
+      })),
     };
 
     res.json(category);
