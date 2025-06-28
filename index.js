@@ -18,7 +18,7 @@ process.on("beforeExit", async () => {
 });
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3005;
 
 // CORS middleware
 app.use(
@@ -29,6 +29,7 @@ app.use(
       "https://achivment-front.vercel.app",
       "https://achivment-front-git-main-achivment-front.vercel.app",
       "https://achivment-front-git-main-adilek96s-projects.vercel.app",
+      "https://penny-test.fvds.ru",
     ],
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
