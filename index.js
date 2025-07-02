@@ -1286,11 +1286,29 @@ app.post("/progress", async (req, res) => {
       });
     }
 
+    const achievement = await prisma.achievement.findUnique({
+      where: { id: achievementId },
+    });
+    if (!achievement) {
+      return res.status(404).json({ error: "Achievement not found" });
+    }
+
+    let validProgress;
+
+    if (achievement.target === 0) {
+      validProgress = "FINISHED";
+    } else {
+      validProgress = "INPROGRESS";
+      if (currentStep >= achievement.target) {
+        validProgress = "FINISHED";
+      }
+    }
+
     const progressRecord = await prisma.userAchievementProgress.create({
       data: {
         userId,
         achievementId,
-        progress: progress || "INPROGRESS",
+        progress: validProgress || "INPROGRESS",
         currentStep: currentStep || 0,
       },
       include: {
@@ -1318,12 +1336,31 @@ app.patch("/progress/:id", async (req, res) => {
       });
     }
 
+    const achievement = await prisma.achievement.findUnique({
+      where: { id: achievementId },
+    });
+    if (!achievement) {
+      return res.status(404).json({ error: "Achievement not found" });
+    }
+
+    let validProgress;
+
+    if (currentStep >= achievement.target) {
+      validProgress = "FINISHED";
+    } else {
+      validProgress = "INPROGRESS";
+    }
+
+    if (progress === "BLOCKED") {
+      validProgress = "BLOCKED";
+    }
+
     const progressRecord = await prisma.userAchievementProgress.update({
       where: { id },
       data: {
         userId,
         achievementId,
-        progress,
+        progress: validProgress,
         currentStep,
       },
       include: {
