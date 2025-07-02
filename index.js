@@ -428,7 +428,7 @@ app.get("/categories", async (req, res) => {
         achievements: { include: { reward: true } },
       },
     });
-    // ── 3. Локализуем всё нужное ───────────────────────
+    // ── 3. Локализуем всё нужное ───────────────────────
     const categories = rows.map((row) => ({
       ...row,
 
@@ -470,18 +470,18 @@ app.get("/categories", async (req, res) => {
 
 app.get("/categories/:id", async (req, res) => {
   try {
-    // 1 ⟶ нормализуем язык (“ru‑RU” → “ru”)
+    // 1 ⟶ нормализуем язык ("ru‑RU" → "ru")
     const rawLang = req.query.lang;
     const lang = rawLang?.split(/[-_]/)[0]?.toLowerCase();
 
-    // 2 ⟶ берём категорию вместе с достижениями
+    // 2 ⟶ берём категорию вместе с достижениями
     const row = await prisma.achievementCategory.findUnique({
       where: { id: req.params.id },
       include: { achievements: { include: { reward: true } } },
     });
     if (!row) return res.status(404).json({ error: "Category not found" });
 
-    // 3 ⟶ локализуем всё нужное
+    // 3 ⟶ локализуем всё нужное
     const category = {
       ...row,
       name: lang
@@ -1149,6 +1149,43 @@ app.delete("/rewards/:id", async (req, res) => {
  *     responses:
  *       200:
  *         description: OK
+ * /progress/user/{id}:
+ *   get:
+ *     summary: Получить прогресс конкретного пользователя по ID
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID пользователя
+ *     responses:
+ *       200:
+ *         description: Массив прогресса пользователя
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id:
+ *                     type: string
+ *                   userId:
+ *                     type: string
+ *                   achievementId:
+ *                     type: string
+ *                   progress:
+ *                     type: string
+ *                     enum: [INPROGRESS, BLOCKED, FINISHED]
+ *                   currentStep:
+ *                     type: integer
+ *                   achievement:
+ *                     type: object
+ *       404:
+ *         description: Пользователь не найден
+ *       500:
+ *         description: Ошибка сервера
  * /progress/{id}:
  *   patch:
  *     summary: Обновить прогресс
@@ -1202,11 +1239,11 @@ app.get("/progress", async (req, res) => {
   }
 });
 
-app.get("/progress/user/:userId", async (req, res) => {
+app.get("/progress/user/:id", async (req, res) => {
   try {
-    const { userId } = req.params;
+    const { id } = req.params;
     const progress = await prisma.userAchievementProgress.findMany({
-      where: { userId },
+      where: { userId: id },
       include: {
         achievement: true,
       },
@@ -1306,6 +1343,24 @@ app.delete("/progress/:id", async (req, res) => {
       where: { id },
     });
     res.status(204).send();
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get("/progress/user/:id/:achievementId", async (req, res) => {
+  try {
+    const { id, achievementId } = req.params;
+    const progress = await prisma.userAchievementProgress.findFirst({
+      where: { userId: id, achievementId },
+      include: {
+        achievement: true,
+      },
+    });
+    if (!progress) {
+      return res.status(404).json({ error: "Progress not found" });
+    }
+    res.json(progress);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
