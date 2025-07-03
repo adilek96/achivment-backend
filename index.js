@@ -4,6 +4,8 @@ import { PrismaClient } from "@prisma/client";
 import swaggerJSDoc from "swagger-jsdoc";
 import swaggerUi from "swagger-ui-express";
 import cors from "cors";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
 import { getTranslation, DEFAULT_LANGUAGE } from "./lib/translations.js";
 
 dotenv.config();
@@ -19,6 +21,33 @@ process.on("beforeExit", async () => {
 
 const app = express();
 const PORT = process.env.PORT || 3005;
+
+// Security middleware
+app.use(helmet());
+
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 минут
+  max: 100, // максимум 100 запросов с одного IP
+  message: {
+    error: "Too many requests from this IP, please try again later.",
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+app.use(limiter);
+
+// Более строгий rate limit для POST запросов
+const postLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 минут
+  max: 20, // максимум 20 POST запросов с одного IP
+  message: {
+    error: "Too many POST requests from this IP, please try again later.",
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 // CORS middleware
 app.use(
@@ -208,6 +237,37 @@ function normalizeNameTranslations(name) {
 // 2) вытягиваем конкретный язык (без резервного «дефолта»)
 function pickLang(nameObj, lang) {
   return typeof nameObj?.[lang] === "string" ? nameObj[lang] : "";
+}
+
+/* ─── Валидация ─── */
+// Функция для валидации CUID
+function isValidCuid(id) {
+  return (
+    typeof id === "string" && id.length >= 25 && /^c[a-z0-9]{24}$/.test(id)
+  );
+}
+
+// Функция для валидации объекта переводов
+function isValidTranslations(obj) {
+  if (!obj || typeof obj !== "object") return false;
+  return LANGS.every((lang) => typeof obj[lang] === "string");
+}
+
+// Функция для санитизации строк
+function sanitizeString(str) {
+  if (typeof str !== "string") return "";
+  return str.trim().replace(/[<>]/g, "");
+}
+
+// Функция для валидации URL
+function isValidUrl(url) {
+  if (!url || typeof url !== "string") return false;
+  try {
+    new URL(url);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 const swaggerSpec = swaggerJSDoc(options);
@@ -518,15 +578,52 @@ app.get("/categories/:id", async (req, res) => {
   }
 });
 
-app.post("/categories", async (req, res) => {
+app.post("/categories", postLimiter, async (req, res) => {
   try {
     const { key, name } = req.body;
-    console.log("[POST /categories] req.body:", req.body);
+
+    // Валидация обязательных полей
+    if (!key || !name) {
+      return res.status(400).json({
+        error: "key и name являются обязательными полями",
+      });
+    }
+
+    // Валидация и санитизация key
+    const sanitizedKey = sanitizeString(key);
+    if (sanitizedKey.length < 2 || sanitizedKey.length > 50) {
+      return res.status(400).json({
+        error: "key должен быть от 2 до 50 символов",
+      });
+    }
+
+    // Проверка уникальности key
+    const existingCategory = await prisma.achievementCategory.findUnique({
+      where: { key: sanitizedKey },
+    });
+
+    if (existingCategory) {
+      return res.status(409).json({
+        error: "Category with this key already exists",
+      });
+    }
+
+    // Валидация и нормализация переводов
     const nameTranslations = normalizeNameTranslations(name);
-    console.log("[POST /categories] nameTranslations:", nameTranslations);
+
+    // Проверяем, что хотя бы один перевод не пустой
+    const hasValidTranslation = LANGS.some(
+      (lang) => nameTranslations[lang].trim().length > 0
+    );
+    if (!hasValidTranslation) {
+      return res.status(400).json({
+        error: "At least one translation must be provided",
+      });
+    }
+
     const category = await prisma.achievementCategory.create({
       data: {
-        key,
+        key: sanitizedKey,
         name: nameTranslations,
       },
     });
@@ -731,9 +828,48 @@ app.get("/achievements/:id", async (req, res) => {
   }
 });
 
-app.post("/achievements", async (req, res) => {
+app.post("/achievements", postLimiter, async (req, res) => {
   try {
     const { title, description, icon, hidden, target, categoryId } = req.body;
+
+    // Валидация обязательных полей
+    if (!title || !description || !categoryId) {
+      return res.status(400).json({
+        error: "title, description и categoryId являются обязательными полями",
+      });
+    }
+
+    // Валидация categoryId
+    if (!isValidCuid(categoryId)) {
+      return res.status(400).json({
+        error: "Invalid categoryId format",
+      });
+    }
+
+    // Проверка существования категории
+    const category = await prisma.achievementCategory.findUnique({
+      where: { id: categoryId },
+    });
+
+    if (!category) {
+      return res.status(404).json({
+        error: "Category not found",
+      });
+    }
+
+    // Валидация target
+    if (target !== undefined && (typeof target !== "number" || target < 0)) {
+      return res.status(400).json({
+        error: "target должен быть неотрицательным числом",
+      });
+    }
+
+    // Валидация icon (если передан)
+    if (icon && !isValidUrl(icon) && icon.length > 100) {
+      return res.status(400).json({
+        error: "icon должен быть валидным URL или эмодзи",
+      });
+    }
 
     // Конвертируем строки в объекты переводов
     const titleTranslations =
@@ -744,13 +880,38 @@ app.post("/achievements", async (req, res) => {
         ? { [DEFAULT_LANGUAGE]: description }
         : description;
 
+    // Проверяем, что хотя бы один перевод не пустой
+    const titleNormalized = normalizeNameTranslations(titleTranslations);
+    const descriptionNormalized = normalizeNameTranslations(
+      descriptionTranslations
+    );
+
+    const hasValidTitle = LANGS.some(
+      (lang) => titleNormalized[lang].trim().length > 0
+    );
+    const hasValidDescription = LANGS.some(
+      (lang) => descriptionNormalized[lang].trim().length > 0
+    );
+
+    if (!hasValidTitle) {
+      return res.status(400).json({
+        error: "At least one title translation must be provided",
+      });
+    }
+
+    if (!hasValidDescription) {
+      return res.status(400).json({
+        error: "At least one description translation must be provided",
+      });
+    }
+
     const achievement = await prisma.achievement.create({
       data: {
-        title: titleTranslations,
-        description: descriptionTranslations,
-        icon,
-        hidden: hidden || false,
-        target,
+        title: titleNormalized,
+        description: descriptionNormalized,
+        icon: icon ? sanitizeString(icon) : null,
+        hidden: Boolean(hidden),
+        target: target || null,
         categoryId,
       },
       include: {
@@ -759,6 +920,7 @@ app.post("/achievements", async (req, res) => {
     });
     res.status(201).json(achievement);
   } catch (error) {
+    console.error("Error in POST /achievements:", error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -964,7 +1126,7 @@ app.get("/rewards/:id", async (req, res) => {
   }
 });
 
-app.post("/rewards", async (req, res) => {
+app.post("/rewards", postLimiter, async (req, res) => {
   try {
     const {
       type,
@@ -976,6 +1138,14 @@ app.post("/rewards", async (req, res) => {
       achievementId,
     } = req.body;
 
+    // Валидация обязательных полей
+    if (!type || !title || !description || !achievementId) {
+      return res.status(400).json({
+        error:
+          "type, title, description и achievementId являются обязательными полями",
+      });
+    }
+
     // Валидация типа награды
     const validRewardTypes = [
       "badge",
@@ -984,12 +1154,55 @@ app.post("/rewards", async (req, res) => {
       "cat_accessories",
       "visual_effects",
     ];
-    if (type && !validRewardTypes.includes(type)) {
+    if (!validRewardTypes.includes(type)) {
       return res.status(400).json({
         error: `Invalid reward type. Must be one of: ${validRewardTypes.join(
           ", "
         )}`,
         receivedType: type,
+      });
+    }
+
+    // Валидация achievementId
+    if (!isValidCuid(achievementId)) {
+      return res.status(400).json({
+        error: "Invalid achievementId format",
+      });
+    }
+
+    // Проверка существования достижения
+    const achievement = await prisma.achievement.findUnique({
+      where: { id: achievementId },
+    });
+
+    if (!achievement) {
+      return res.status(404).json({
+        error: "Achievement not found",
+      });
+    }
+
+    // Проверка, что у достижения еще нет награды
+    const existingReward = await prisma.reward.findUnique({
+      where: { achievementId },
+    });
+
+    if (existingReward) {
+      return res.status(409).json({
+        error: "Achievement already has a reward",
+      });
+    }
+
+    // Валидация icon (если передан)
+    if (icon && !isValidUrl(icon) && icon.length > 100) {
+      return res.status(400).json({
+        error: "icon должен быть валидным URL или эмодзи",
+      });
+    }
+
+    // Валидация details (если передан)
+    if (details && (typeof details !== "object" || Array.isArray(details))) {
+      return res.status(400).json({
+        error: "details должен быть объектом",
       });
     }
 
@@ -1002,13 +1215,38 @@ app.post("/rewards", async (req, res) => {
         ? { [DEFAULT_LANGUAGE]: description }
         : description;
 
+    // Проверяем, что хотя бы один перевод не пустой
+    const titleNormalized = normalizeNameTranslations(titleTranslations);
+    const descriptionNormalized = normalizeNameTranslations(
+      descriptionTranslations
+    );
+
+    const hasValidTitle = LANGS.some(
+      (lang) => titleNormalized[lang].trim().length > 0
+    );
+    const hasValidDescription = LANGS.some(
+      (lang) => descriptionNormalized[lang].trim().length > 0
+    );
+
+    if (!hasValidTitle) {
+      return res.status(400).json({
+        error: "At least one title translation must be provided",
+      });
+    }
+
+    if (!hasValidDescription) {
+      return res.status(400).json({
+        error: "At least one description translation must be provided",
+      });
+    }
+
     const reward = await prisma.reward.create({
       data: {
         type,
-        title: titleTranslations,
-        description: descriptionTranslations,
-        icon,
-        isApplicable: isApplicable || false,
+        title: titleNormalized,
+        description: descriptionNormalized,
+        icon: icon ? sanitizeString(icon) : null,
+        isApplicable: Boolean(isApplicable),
         details: details || {},
         achievementId,
       },
@@ -1019,11 +1257,8 @@ app.post("/rewards", async (req, res) => {
     res.status(201).json(reward);
   } catch (error) {
     console.error("Error in POST /rewards:", error);
-    console.error("Request body:", req.body);
     res.status(500).json({
       error: error.message,
-      details: error.stack,
-      requestBody: req.body,
     });
   }
 });
@@ -1272,9 +1507,32 @@ app.get("/progress/:id", async (req, res) => {
   }
 });
 
-app.post("/progress", async (req, res) => {
+app.post("/progress", postLimiter, async (req, res) => {
   try {
     const { userId, achievementId, progress, currentStep } = req.body;
+
+    // Валидация обязательных полей
+    if (!userId || !achievementId) {
+      return res.status(400).json({
+        error: "userId и achievementId являются обязательными полями",
+      });
+    }
+
+    // Валидация типов данных
+    if (typeof userId !== "string" || typeof achievementId !== "string") {
+      return res.status(400).json({
+        error: "userId и achievementId должны быть строками",
+      });
+    }
+
+    if (
+      currentStep !== undefined &&
+      (typeof currentStep !== "number" || currentStep < 0)
+    ) {
+      return res.status(400).json({
+        error: "currentStep должен быть неотрицательным числом",
+      });
+    }
 
     // Валидация enum значений
     const validProgressValues = ["INPROGRESS", "BLOCKED", "FINISHED"];
@@ -1286,6 +1544,7 @@ app.post("/progress", async (req, res) => {
       });
     }
 
+    // Проверка существования достижения
     const achievement = await prisma.achievement.findUnique({
       where: { id: achievementId },
     });
@@ -1293,14 +1552,45 @@ app.post("/progress", async (req, res) => {
       return res.status(404).json({ error: "Achievement not found" });
     }
 
-    let validProgress;
+    // Проверка на существующую запись прогресса
+    const existingProgress = await prisma.userAchievementProgress.findUnique({
+      where: {
+        userId_achievementId: {
+          userId,
+          achievementId,
+        },
+      },
+    });
 
-    if (achievement.target === 0) {
-      validProgress = "FINISHED";
+    if (existingProgress) {
+      return res.status(409).json({
+        error: "Progress record already exists for this user and achievement",
+        existingProgress,
+      });
+    }
+
+    // Определение правильного статуса прогресса
+    let finalProgress = "INPROGRESS";
+    let finalCurrentStep = currentStep || 0;
+
+    // Если передан BLOCKED, сохраняем его
+    if (progress === "BLOCKED") {
+      finalProgress = "BLOCKED";
     } else {
-      validProgress = "INPROGRESS";
-      if (currentStep >= achievement.target) {
-        validProgress = "FINISHED";
+      // Проверяем, достигнута ли цель
+      if (achievement.target === 0 || finalCurrentStep >= achievement.target) {
+        finalProgress = "FINISHED";
+        // Убеждаемся, что currentStep не превышает target
+        if (achievement.target > 0) {
+          finalCurrentStep = Math.min(finalCurrentStep, achievement.target);
+        }
+      } else if (progress === "FINISHED") {
+        // Если пользователь явно указывает FINISHED, но цель не достигнута
+        return res.status(400).json({
+          error: "Cannot set progress to FINISHED when target is not reached",
+          currentStep: finalCurrentStep,
+          target: achievement.target,
+        });
       }
     }
 
@@ -1308,15 +1598,17 @@ app.post("/progress", async (req, res) => {
       data: {
         userId,
         achievementId,
-        progress: validProgress || "INPROGRESS",
-        currentStep: currentStep || 0,
+        progress: finalProgress,
+        currentStep: finalCurrentStep,
       },
       include: {
         achievement: true,
       },
     });
+
     res.status(201).json(progressRecord);
   } catch (error) {
+    console.error("Error in POST /progress:", error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -1326,6 +1618,35 @@ app.patch("/progress/:id", async (req, res) => {
     const { id } = req.params;
     const { userId, achievementId, progress, currentStep } = req.body;
 
+    // Валидация ID
+    if (!id) {
+      return res.status(400).json({
+        error: "ID является обязательным параметром",
+      });
+    }
+
+    // Валидация типов данных
+    if (userId !== undefined && typeof userId !== "string") {
+      return res.status(400).json({
+        error: "userId должен быть строкой",
+      });
+    }
+
+    if (achievementId !== undefined && typeof achievementId !== "string") {
+      return res.status(400).json({
+        error: "achievementId должен быть строкой",
+      });
+    }
+
+    if (
+      currentStep !== undefined &&
+      (typeof currentStep !== "number" || currentStep < 0)
+    ) {
+      return res.status(400).json({
+        error: "currentStep должен быть неотрицательным числом",
+      });
+    }
+
     // Валидация enum значений
     const validProgressValues = ["INPROGRESS", "BLOCKED", "FINISHED"];
     if (progress && !validProgressValues.includes(progress)) {
@@ -1336,32 +1657,74 @@ app.patch("/progress/:id", async (req, res) => {
       });
     }
 
-    const achievement = await prisma.achievement.findUnique({
-      where: { id: achievementId },
+    // Проверка существования записи прогресса
+    const existingProgress = await prisma.userAchievementProgress.findUnique({
+      where: { id },
+      include: { achievement: true },
     });
-    if (!achievement) {
-      return res.status(404).json({ error: "Achievement not found" });
+
+    if (!existingProgress) {
+      return res.status(404).json({ error: "Progress record not found" });
     }
 
-    let validProgress;
-
-    if (currentStep >= achievement.target) {
-      validProgress = "FINISHED";
-    } else {
-      validProgress = "INPROGRESS";
+    // Если указан achievementId, проверяем его существование
+    let achievement = existingProgress.achievement;
+    if (achievementId && achievementId !== existingProgress.achievementId) {
+      achievement = await prisma.achievement.findUnique({
+        where: { id: achievementId },
+      });
+      if (!achievement) {
+        return res.status(404).json({ error: "Achievement not found" });
+      }
     }
 
+    // Определение правильного статуса прогресса
+    let finalProgress = existingProgress.progress;
+    let finalCurrentStep =
+      currentStep !== undefined ? currentStep : existingProgress.currentStep;
+
+    // Если передан BLOCKED, сохраняем его
     if (progress === "BLOCKED") {
-      validProgress = "BLOCKED";
+      finalProgress = "BLOCKED";
+    } else if (progress) {
+      // Проверяем, достигнута ли цель для FINISHED
+      if (progress === "FINISHED") {
+        if (achievement.target > 0 && finalCurrentStep < achievement.target) {
+          return res.status(400).json({
+            error: "Cannot set progress to FINISHED when target is not reached",
+            currentStep: finalCurrentStep,
+            target: achievement.target,
+          });
+        }
+        finalProgress = "FINISHED";
+      } else if (progress === "INPROGRESS") {
+        // Проверяем, не достигнута ли уже цель
+        if (achievement.target > 0 && finalCurrentStep >= achievement.target) {
+          finalProgress = "FINISHED";
+        } else {
+          finalProgress = "INPROGRESS";
+        }
+      }
+    } else {
+      // Если progress не передан, определяем автоматически
+      if (achievement.target === 0 || finalCurrentStep >= achievement.target) {
+        finalProgress = "FINISHED";
+        // Убеждаемся, что currentStep не превышает target
+        if (achievement.target > 0) {
+          finalCurrentStep = Math.min(finalCurrentStep, achievement.target);
+        }
+      } else {
+        finalProgress = "INPROGRESS";
+      }
     }
 
     const progressRecord = await prisma.userAchievementProgress.update({
       where: { id },
       data: {
-        userId,
-        achievementId,
-        progress: validProgress,
-        currentStep,
+        userId: userId || existingProgress.userId,
+        achievementId: achievementId || existingProgress.achievementId,
+        progress: finalProgress,
+        currentStep: finalCurrentStep,
       },
       include: {
         achievement: true,
@@ -1369,6 +1732,7 @@ app.patch("/progress/:id", async (req, res) => {
     });
     res.json(progressRecord);
   } catch (error) {
+    console.error("Error in PATCH /progress/:id:", error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -1376,11 +1740,29 @@ app.patch("/progress/:id", async (req, res) => {
 app.delete("/progress/:id", async (req, res) => {
   try {
     const { id } = req.params;
+
+    // Валидация ID
+    if (!id) {
+      return res.status(400).json({
+        error: "ID является обязательным параметром",
+      });
+    }
+
+    // Проверка существования записи перед удалением
+    const existingProgress = await prisma.userAchievementProgress.findUnique({
+      where: { id },
+    });
+
+    if (!existingProgress) {
+      return res.status(404).json({ error: "Progress record not found" });
+    }
+
     await prisma.userAchievementProgress.delete({
       where: { id },
     });
     res.status(204).send();
   } catch (error) {
+    console.error("Error in DELETE /progress/:id:", error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -1388,17 +1770,46 @@ app.delete("/progress/:id", async (req, res) => {
 app.get("/progress/user/:id/:achievementId", async (req, res) => {
   try {
     const { id, achievementId } = req.params;
+
+    // Валидация параметров
+    if (!id || !achievementId) {
+      return res.status(400).json({
+        error:
+          "ID пользователя и ID достижения являются обязательными параметрами",
+      });
+    }
+
+    // Проверка существования достижения
+    const achievement = await prisma.achievement.findUnique({
+      where: { id: achievementId },
+    });
+
+    if (!achievement) {
+      return res.status(404).json({
+        error: "Achievement not found",
+        status: false,
+      });
+    }
+
     const progress = await prisma.userAchievementProgress.findFirst({
       where: { userId: id, achievementId },
       include: {
         achievement: true,
       },
     });
+
     if (!progress) {
-      return res.json({ status: false, message: "Progress not found" });
+      return res.json({
+        status: false,
+        message: "Progress not found",
+        userId: id,
+        achievementId: achievementId,
+      });
     }
+
     res.json({ progress, status: true });
   } catch (error) {
+    console.error("Error in GET /progress/user/:id/:achievementId:", error);
     res.status(500).json({ error: error.message });
   }
 });
