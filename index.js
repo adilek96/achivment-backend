@@ -34,6 +34,7 @@ app.use(
       "https://achivment-front-git-main-achivment-front.vercel.app",
       "https://achivment-front-git-main-adilek96s-projects.vercel.app",
       "https://penny-test.fvds.ru",
+      "https://test.aquadaddy.app",
     ],
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
@@ -1101,7 +1102,7 @@ app.get("/rewards/:id", async (req, res) => {
   }
 });
 
-app.post("/rewards", postLimiter, async (req, res) => {
+app.post("/rewards", async (req, res) => {
   try {
     const {
       type,
@@ -1482,7 +1483,7 @@ app.get("/progress/:id", async (req, res) => {
   }
 });
 
-app.post("/progress", postLimiter, async (req, res) => {
+app.post("/progress", async (req, res) => {
   try {
     const lang = req.query.lang;
     const { userId, achievementId, progress, currentStep } = req.body;
