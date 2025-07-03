@@ -1395,9 +1395,9 @@ app.get("/progress/user/:id/:achievementId", async (req, res) => {
       },
     });
     if (!progress) {
-      return res.status(404).json({ error: "Progress not found" });
+      return res.json({ status: false, message: "Progress not found" });
     }
-    res.json(progress);
+    res.json({ progress, status: true });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
