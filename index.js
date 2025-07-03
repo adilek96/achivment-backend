@@ -1509,6 +1509,7 @@ app.get("/progress/:id", async (req, res) => {
 
 app.post("/progress", postLimiter, async (req, res) => {
   try {
+    const lang = req.query.lang;
     const { userId, achievementId, progress, currentStep } = req.body;
 
     // Валидация обязательных полей
@@ -1594,7 +1595,7 @@ app.post("/progress", postLimiter, async (req, res) => {
       }
     }
 
-    const progressRecord = await prisma.userAchievementProgress.create({
+    const row = await prisma.userAchievementProgress.create({
       data: {
         userId,
         achievementId,
@@ -1602,9 +1603,38 @@ app.post("/progress", postLimiter, async (req, res) => {
         currentStep: finalCurrentStep,
       },
       include: {
-        achievement: true,
+        achievement: {
+          include: {
+            reward: true,
+          },
+        },
       },
     });
+
+    // Локализуем данные достижения и награды
+    const progressRecord = {
+      ...row,
+      achievement: {
+        ...row.achievement,
+        title: lang
+          ? pickLang(row.achievement.title, lang)
+          : normalizeNameTranslations(row.achievement.title),
+        description: lang
+          ? pickLang(row.achievement.description, lang)
+          : normalizeNameTranslations(row.achievement.description),
+        reward: row.achievement.reward
+          ? {
+              ...row.achievement.reward,
+              title: lang
+                ? pickLang(row.achievement.reward.title, lang)
+                : normalizeNameTranslations(row.achievement.reward.title),
+              description: lang
+                ? pickLang(row.achievement.reward.description, lang)
+                : normalizeNameTranslations(row.achievement.reward.description),
+            }
+          : null,
+      },
+    };
 
     res.status(201).json(progressRecord);
   } catch (error) {
@@ -1616,6 +1646,7 @@ app.post("/progress", postLimiter, async (req, res) => {
 app.patch("/progress/:id", async (req, res) => {
   try {
     const { id } = req.params;
+    const lang = req.query.lang;
     const { userId, achievementId, progress, currentStep } = req.body;
 
     // Валидация ID
@@ -1660,7 +1691,13 @@ app.patch("/progress/:id", async (req, res) => {
     // Проверка существования записи прогресса
     const existingProgress = await prisma.userAchievementProgress.findUnique({
       where: { id },
-      include: { achievement: true },
+      include: {
+        achievement: {
+          include: {
+            reward: true,
+          },
+        },
+      },
     });
 
     if (!existingProgress) {
@@ -1718,7 +1755,7 @@ app.patch("/progress/:id", async (req, res) => {
       }
     }
 
-    const progressRecord = await prisma.userAchievementProgress.update({
+    const row = await prisma.userAchievementProgress.update({
       where: { id },
       data: {
         userId: userId || existingProgress.userId,
@@ -1727,9 +1764,39 @@ app.patch("/progress/:id", async (req, res) => {
         currentStep: finalCurrentStep,
       },
       include: {
-        achievement: true,
+        achievement: {
+          include: {
+            reward: true,
+          },
+        },
       },
     });
+
+    // Локализуем данные достижения и награды
+    const progressRecord = {
+      ...row,
+      achievement: {
+        ...row.achievement,
+        title: lang
+          ? pickLang(row.achievement.title, lang)
+          : normalizeNameTranslations(row.achievement.title),
+        description: lang
+          ? pickLang(row.achievement.description, lang)
+          : normalizeNameTranslations(row.achievement.description),
+        reward: row.achievement.reward
+          ? {
+              ...row.achievement.reward,
+              title: lang
+                ? pickLang(row.achievement.reward.title, lang)
+                : normalizeNameTranslations(row.achievement.reward.title),
+              description: lang
+                ? pickLang(row.achievement.reward.description, lang)
+                : normalizeNameTranslations(row.achievement.reward.description),
+            }
+          : null,
+      },
+    };
+
     res.json(progressRecord);
   } catch (error) {
     console.error("Error in PATCH /progress/:id:", error);
@@ -1770,6 +1837,7 @@ app.delete("/progress/:id", async (req, res) => {
 app.get("/progress/user/:id/:achievementId", async (req, res) => {
   try {
     const { id, achievementId } = req.params;
+    const lang = req.query.lang;
 
     // Валидация параметров
     if (!id || !achievementId) {
@@ -1791,14 +1859,18 @@ app.get("/progress/user/:id/:achievementId", async (req, res) => {
       });
     }
 
-    const progress = await prisma.userAchievementProgress.findFirst({
+    const row = await prisma.userAchievementProgress.findFirst({
       where: { userId: id, achievementId },
       include: {
-        achievement: true,
+        achievement: {
+          include: {
+            reward: true,
+          },
+        },
       },
     });
 
-    if (!progress) {
+    if (!row) {
       return res.json({
         status: false,
         message: "Progress not found",
@@ -1806,6 +1878,31 @@ app.get("/progress/user/:id/:achievementId", async (req, res) => {
         achievementId: achievementId,
       });
     }
+
+    // Локализуем данные достижения и награды
+    const progress = {
+      ...row,
+      achievement: {
+        ...row.achievement,
+        title: lang
+          ? pickLang(row.achievement.title, lang)
+          : normalizeNameTranslations(row.achievement.title),
+        description: lang
+          ? pickLang(row.achievement.description, lang)
+          : normalizeNameTranslations(row.achievement.description),
+        reward: row.achievement.reward
+          ? {
+              ...row.achievement.reward,
+              title: lang
+                ? pickLang(row.achievement.reward.title, lang)
+                : normalizeNameTranslations(row.achievement.reward.title),
+              description: lang
+                ? pickLang(row.achievement.reward.description, lang)
+                : normalizeNameTranslations(row.achievement.reward.description),
+            }
+          : null,
+      },
+    };
 
     res.json({ progress, status: true });
   } catch (error) {
