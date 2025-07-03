@@ -5,7 +5,6 @@ import swaggerJSDoc from "swagger-jsdoc";
 import swaggerUi from "swagger-ui-express";
 import cors from "cors";
 import helmet from "helmet";
-import rateLimit from "express-rate-limit";
 import { getTranslation, DEFAULT_LANGUAGE } from "./lib/translations.js";
 
 dotenv.config();
@@ -24,30 +23,6 @@ const PORT = process.env.PORT || 3005;
 
 // Security middleware
 app.use(helmet());
-
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 минут
-  max: 100, // максимум 100 запросов с одного IP
-  message: {
-    error: "Too many requests from this IP, please try again later.",
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-
-app.use(limiter);
-
-// Более строгий rate limit для POST запросов
-const postLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 минут
-  max: 20, // максимум 20 POST запросов с одного IP
-  message: {
-    error: "Too many POST requests from this IP, please try again later.",
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
 
 // CORS middleware
 app.use(
@@ -578,7 +553,7 @@ app.get("/categories/:id", async (req, res) => {
   }
 });
 
-app.post("/categories", postLimiter, async (req, res) => {
+app.post("/categories", async (req, res) => {
   try {
     const { key, name } = req.body;
 
@@ -828,7 +803,7 @@ app.get("/achievements/:id", async (req, res) => {
   }
 });
 
-app.post("/achievements", postLimiter, async (req, res) => {
+app.post("/achievements", async (req, res) => {
   try {
     const { title, description, icon, hidden, target, categoryId } = req.body;
 
