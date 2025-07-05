@@ -298,7 +298,9 @@ app.get("/api/achievements-events", (req, res) => {
 });
 
 setInterval(() => {
-  clients.forEach((client) => client.write(client));
+  const ids = clients.map((c) => c);
+  const payload = `event: clients\ndata: ${JSON.stringify(ids)}\n\n`;
+  clients.forEach((client) => client.write(payload));
 }, 5000);
 
 health(app, prisma);
