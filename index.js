@@ -286,7 +286,7 @@ app.get("/api/achievements-events", (req, res) => {
   res.setHeader("Connection", "keep-alive");
 
   // Отправка события при подключении
-  res.write(`data: Connected at ${new Date().toISOString()}\n\n`);
+  res.write(`event: welcome\ndata: yourId:${res}\n\n`);
 
   // Сохраняем соединение
   clients.push(res);
