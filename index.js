@@ -298,7 +298,6 @@ app.get("/api/achievements-events", (req, res) => {
 });
 
 setInterval(() => {
-  const message = `data: ${new Date().toLocaleTimeString()}\n\n`;
   clients.forEach((client) => client.write(client));
 }, 5000);
 
