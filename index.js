@@ -330,7 +330,7 @@ setInterval(() => {
   }
 
   const clientId = clients.find((c) => c.id === "1290846726");
-  const payload = `data:  ${clientId}\n\n`;
+  const payload = `data:  ${clientId.id}\n\n`;
 
   clients.find(({ id, res }) => {
     if (id === "1290846726") {
