@@ -298,9 +298,11 @@ app.get("/api/achievements-events", (req, res) => {
   // SSE-заголовки
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Headers", "Cache-Control");
 
   // получаем уникального ID клиента
-  let clientId = req.query.clientId.toString();
+  let clientId = req.query.clientId;
 
   if (!clientId) {
     console.log("No clientId provided, rejecting connection");
@@ -308,7 +310,13 @@ app.get("/api/achievements-events", (req, res) => {
     return;
   }
 
-  res.write(`data: соеденение установлено\n\n`);
+  // Принудительно конвертируем в строку
+  clientId = clientId.toString();
+
+  console.log("Sending welcome messages to client:", clientId);
+
+  // Отправляем приветственные сообщения
+  res.write(`data: соединение установлено\n\n`);
   res.write(`data: ${clientId}\n\n`);
 
   // Сохраняем клиента
@@ -324,27 +332,33 @@ app.get("/api/achievements-events", (req, res) => {
   });
 });
 
+// OPTIONS handler для SSE
+app.options("/api/achievements-events", (req, res) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Cache-Control");
+  res.status(200).send();
+});
+
 setInterval(() => {
   if (clients.length === 0) {
     return; // Не отправляем события если нет клиентов
   }
 
-  const client = clients.find((c) => c.id === "1290846726");
-  const payload = `data:  ${client ? client.id : "not found"}\n\n`;
+  console.log(`Sending heartbeat to ${clients.length} clients`);
 
-  clients.find(({ id, res }) => {
-    if (id === "1290846726") {
-      try {
-        res.write(payload);
-      } catch (err) {
-        console.log(
-          `Error sending clients event to client ${id}:`,
-          err.message
-        );
-      }
+  clients.forEach(({ id, res }) => {
+    try {
+      const payload = `data: heartbeat ${new Date().toISOString()}\n\n`;
+      res.write(payload);
+      console.log(`Sent heartbeat to client ${id}`);
+    } catch (err) {
+      console.log(`Error sending heartbeat to client ${id}:`, err.message);
+      // Ошибка при записи — удаляем клиента
+      clients = clients.filter((c) => c.res !== res);
     }
   });
-}, 1000);
+}, 3000);
 
 health(app, prisma);
 categories(app, prisma, dependencies);
