@@ -1,7 +1,8 @@
 export default function progress(
   app,
   prisma,
-  { pickLang, normalizeNameTranslations, isValidCuid, clients }
+  { pickLang, normalizeNameTranslations, isValidCuid },
+  clients
 ) {
   /**
    * @swagger
