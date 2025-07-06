@@ -309,7 +309,7 @@ app.get("/api/achievements-events", (req, res) => {
     return;
   }
 
-  res.write(`event: welcome\ndata: ${clientId}\n\n`);
+  res.write(`data: ${clientId}\n\n`);
 
   // Сохраняем клиента
   const client = { id: clientId, res };
@@ -339,7 +339,7 @@ setInterval(() => {
   }
 
   const clientId = clients.find((c) => c.id === 1290846726);
-  const payload = `data: clients\ndata: ${clientId}\n\n`;
+  const payload = `data:  ${clientId}\n\n`;
 
   clients.find(({ id, res }) => {
     if (id === 1290846726) {
