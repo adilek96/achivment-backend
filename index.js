@@ -297,6 +297,8 @@ app.get("/api/achievements-events", (req, res) => {
   res.setHeader("Connection", "keep-alive");
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Headers", "Cache-Control");
+  res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+  res.setHeader("Access-Control-Allow-Credentials", "false");
 
   // получаем уникального ID клиента
   let clientId = req.query.clientId;
@@ -319,6 +321,23 @@ app.get("/api/achievements-events", (req, res) => {
   // Сохраняем клиента
   const client = { id: clientId, res };
   clients.push(client);
+
+  // Отправляем тестовое событие через 1 секунду
+  setTimeout(() => {
+    const testEvent = `event: test\ndata: ${JSON.stringify({
+      message: "Test event after connection",
+      timestamp: new Date().toISOString(),
+      clientId: clientId,
+    })}\n\n`;
+    console.log("Sending test event to client:", clientId);
+    console.log("Test event payload:", testEvent);
+    try {
+      res.write(testEvent);
+      console.log("Test event sent successfully to client:", clientId);
+    } catch (err) {
+      console.log("Error sending test event to client:", clientId, err.message);
+    }
+  }, 1000);
 
   // Удаляем клиента при отключении
   req.on("close", () => {
@@ -358,6 +377,15 @@ app.post("/api/test-sse", (req, res) => {
     clientsCount: clients.length,
     clientIds: clients.map((c) => c.id),
   });
+});
+
+// OPTIONS handler для SSE
+app.options("/api/achievements-events", (req, res) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Cache-Control");
+  res.setHeader("Access-Control-Allow-Credentials", "false");
+  res.status(200).send();
 });
 
 // Отправляем список ID всех клиентов каждые 5 секунд
