@@ -329,11 +329,11 @@ setInterval(() => {
     return; // Не отправляем события если нет клиентов
   }
 
-  const clientId = clients.find((c) => c.id === 1290846726);
+  const clientId = clients.find((c) => c.id === "1290846726");
   const payload = `data:  ${clientId}\n\n`;
 
   clients.find(({ id, res }) => {
-    if (id === 1290846726) {
+    if (id === "1290846726") {
       try {
         res.write(payload);
       } catch (err) {
