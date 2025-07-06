@@ -280,27 +280,40 @@ let clients = [];
 
 // SSE endpoint
 app.get("/api/achievements-events", (req, res) => {
-  // Заголовки SSE
+  // SSE-заголовки
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("Connection", "keep-alive");
 
-  // Отправка события при подключении
-  res.write(`event: welcome\ndata: yourId:${res}\n\n`);
+  // Генерация уникального ID клиента
+  const clientId = Date.now() + Math.random().toString(36).substring(2, 10);
 
-  // Сохраняем соединение
-  clients.push(res);
+  // Приветственное событие
+  res.write(`event: welcome\ndata: yourId:${clientId}\n\n`);
 
-  // Удаляем клиента при разрыве соединения
+  // Сохраняем клиента
+  const client = { id: clientId, res };
+  clients.push(client);
+
+  // Удаляем клиента при отключении
   req.on("close", () => {
-    clients = clients.filter((client) => client !== res);
+    clients = clients.filter((c) => c.id !== clientId);
   });
 });
 
+// Отправляем список ID всех клиентов каждые 5 секунд
 setInterval(() => {
-  const ids = clients.map((c) => c);
-  const payload = `event: clients\ndata: ${JSON.stringify(ids)}\n\n`;
-  clients.forEach((client) => client.write(payload));
+  const clientIds = clients.map((c) => c.id);
+  const payload = `event: clients\ndata: ${JSON.stringify(clientIds)}\n\n`;
+
+  clients.forEach(({ res }) => {
+    try {
+      res.write(payload);
+    } catch (err) {
+      // Ошибка при записи — удаляем клиента
+      clients = clients.filter((c) => c.res !== res);
+    }
+  });
 }, 5000);
 
 health(app, prisma);
