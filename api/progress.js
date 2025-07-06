@@ -302,10 +302,10 @@ export default function progress(
         },
       };
 
-      clients.forEach((client) => {
-        if (client.id === userId.toString()) {
-          console.log("progressRecord", "progressRecord");
-          client.res.write(
+      clients.find(({ id, res }) => {
+        if (id === userId.toString()) {
+          console.log(id, userId);
+          res.write(
             `event: progress\ndata: ${JSON.stringify(progressRecord)}\n\n`
           );
         }
@@ -480,10 +480,10 @@ export default function progress(
             : null,
         },
       };
-      clients.forEach((client) => {
-        if (client.id === userId.toString()) {
-          console.log("progressRecord", "progressRecord");
-          client.res.write(
+      clients.find(({ id, res }) => {
+        if (id === userId.toString()) {
+          console.log(id, userId);
+          res.write(
             `event: progress\ndata: ${JSON.stringify(progressRecord)}\n\n`
           );
         }
