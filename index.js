@@ -297,11 +297,7 @@ app.get("/api/achievements-events", (req, res) => {
 
   // SSE-заголовки
   res.setHeader("Content-Type", "text/event-stream");
-  res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Headers", "Cache-Control");
-  res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
-  res.setHeader("Access-Control-Allow-Credentials", "false");
+  res.setHeader("Cache-Control", "no-cache");
 
   // получаем уникального ID клиента
   let clientId = req.query.clientId;
@@ -312,6 +308,7 @@ app.get("/api/achievements-events", (req, res) => {
     return;
   }
 
+  res.write(`data: соеденение установлено\n\n`);
   res.write(`data: ${clientId}\n\n`);
 
   // Сохраняем клиента
@@ -325,15 +322,6 @@ app.get("/api/achievements-events", (req, res) => {
       `Client ${clientId} disconnected. Total clients: ${clients.length}`
     );
   });
-});
-
-// OPTIONS handler для SSE
-app.options("/api/achievements-events", (req, res) => {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Cache-Control");
-  res.setHeader("Access-Control-Allow-Credentials", "false");
-  res.status(200).send();
 });
 
 setInterval(() => {
