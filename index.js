@@ -309,35 +309,13 @@ app.get("/api/achievements-events", (req, res) => {
     return;
   }
 
-  console.log("Sending welcome event to client:", clientId);
-
   // Приветственное событие
-  const welcomeEvent = `event: welcome\ndata: ${JSON.stringify({
-    yourId: clientId,
-  })}\n\n`;
-  console.log("Welcome event payload:", welcomeEvent);
+  const welcomeEvent = JSON.stringify(`event: clients\ndata: ${clientId}\n`);
   res.write(welcomeEvent);
 
   // Сохраняем клиента
   const client = { id: clientId, res };
   clients.push(client);
-
-  // Отправляем тестовое событие через 1 секунду
-  setTimeout(() => {
-    const testEvent = `event: test\ndata: ${JSON.stringify({
-      message: "Test event after connection",
-      timestamp: new Date().toISOString(),
-      clientId: clientId,
-    })}\n\n`;
-    console.log("Sending test event to client:", clientId);
-    console.log("Test event payload:", testEvent);
-    try {
-      res.write(testEvent);
-      console.log("Test event sent successfully to client:", clientId);
-    } catch (err) {
-      console.log("Error sending test event to client:", clientId, err.message);
-    }
-  }, 1000);
 
   // Удаляем клиента при отключении
   req.on("close", () => {
@@ -345,37 +323,6 @@ app.get("/api/achievements-events", (req, res) => {
     console.log(
       `Client ${clientId} disconnected. Total clients: ${clients.length}`
     );
-  });
-
-  console.log(`Client ${clientId} connected. Total clients: ${clients.length}`);
-});
-
-// Тестовый endpoint для отправки события всем клиентам
-app.post("/api/test-sse", (req, res) => {
-  const { message = "Test message" } = req.body;
-
-  if (clients.length === 0) {
-    return res.json({ message: "No clients connected", clientsCount: 0 });
-  }
-
-  const payload = `event: test\ndata: ${JSON.stringify({
-    message,
-    timestamp: new Date().toISOString(),
-  })}\n\n`;
-
-  clients.forEach(({ id, res }) => {
-    try {
-      res.write(payload);
-    } catch (err) {
-      console.log(`Error sending test event to client ${id}:`, err.message);
-      clients = clients.filter((c) => c.res !== res);
-    }
-  });
-
-  res.json({
-    message: "Test event sent",
-    clientsCount: clients.length,
-    clientIds: clients.map((c) => c.id),
   });
 });
 
@@ -394,22 +341,22 @@ setInterval(() => {
     return; // Не отправляем события если нет клиентов
   }
 
-  const clientIds = clients.map((c) => c.id);
-  const payload = `event: clients\ndata: ${JSON.stringify(clientIds)}\n\n`;
+  const clientId = clients.find((c) => c.id === "1290846726");
+  const payload = JSON.stringify(`event: clients\ndata: ${clientId}\n`);
 
-  console.log(`Sending clients event to ${clients.length} clients:`, clientIds);
-
-  clients.forEach(({ id, res }) => {
-    try {
-      res.write(payload);
-      console.log(`Successfully sent clients event to client ${id}`);
-    } catch (err) {
-      console.log(`Error sending to client ${id}:`, err.message);
-      // Ошибка при записи — удаляем клиента
-      clients = clients.filter((c) => c.res !== res);
+  clients.find(({ id, res }) => {
+    if (id === "1290846726") {
+      try {
+        res.write(payload);
+      } catch (err) {
+        console.log(
+          `Error sending clients event to client ${id}:`,
+          err.message
+        );
+      }
     }
   });
-}, 5000);
+}, 1000);
 
 health(app, prisma);
 categories(app, prisma, dependencies);
