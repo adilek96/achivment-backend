@@ -284,6 +284,13 @@ let clients = [];
 
 // SSE endpoint
 app.get("/api/achievements-events", (req, res) => {
+  console.log(
+    "SSE connection attempt from:",
+    req.ip,
+    "with clientId:",
+    req.query.clientId
+  );
+
   // SSE-заголовки
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
@@ -295,14 +302,19 @@ app.get("/api/achievements-events", (req, res) => {
   let clientId = req.query.clientId;
 
   if (!clientId) {
+    console.log("No clientId provided, rejecting connection");
     res.status(400).json({ error: "Client ID is required" });
     return;
   }
 
+  console.log("Sending welcome event to client:", clientId);
+
   // Приветственное событие
-  res.write(
-    `event: welcome\ndata: ${JSON.stringify({ yourId: clientId })}\n\n`
-  );
+  const welcomeEvent = `event: welcome\ndata: ${JSON.stringify({
+    yourId: clientId,
+  })}\n\n`;
+  console.log("Welcome event payload:", welcomeEvent);
+  res.write(welcomeEvent);
 
   // Сохраняем клиента
   const client = { id: clientId, res };
@@ -319,14 +331,50 @@ app.get("/api/achievements-events", (req, res) => {
   console.log(`Client ${clientId} connected. Total clients: ${clients.length}`);
 });
 
-// Отправляем список ID всех клиентов каждые 5 секунд
-setInterval(() => {
-  const clientIds = clients.map((c) => c.id);
-  const payload = `event: clients\ndata: ${JSON.stringify(clientIds)}\n\n`;
+// Тестовый endpoint для отправки события всем клиентам
+app.post("/api/test-sse", (req, res) => {
+  const { message = "Test message" } = req.body;
+
+  if (clients.length === 0) {
+    return res.json({ message: "No clients connected", clientsCount: 0 });
+  }
+
+  const payload = `event: test\ndata: ${JSON.stringify({
+    message,
+    timestamp: new Date().toISOString(),
+  })}\n\n`;
 
   clients.forEach(({ id, res }) => {
     try {
       res.write(payload);
+    } catch (err) {
+      console.log(`Error sending test event to client ${id}:`, err.message);
+      clients = clients.filter((c) => c.res !== res);
+    }
+  });
+
+  res.json({
+    message: "Test event sent",
+    clientsCount: clients.length,
+    clientIds: clients.map((c) => c.id),
+  });
+});
+
+// Отправляем список ID всех клиентов каждые 5 секунд
+setInterval(() => {
+  if (clients.length === 0) {
+    return; // Не отправляем события если нет клиентов
+  }
+
+  const clientIds = clients.map((c) => c.id);
+  const payload = `event: clients\ndata: ${JSON.stringify(clientIds)}\n\n`;
+
+  console.log(`Sending clients event to ${clients.length} clients:`, clientIds);
+
+  clients.forEach(({ id, res }) => {
+    try {
+      res.write(payload);
+      console.log(`Successfully sent clients event to client ${id}`);
     } catch (err) {
       console.log(`Error sending to client ${id}:`, err.message);
       // Ошибка при записи — удаляем клиента
