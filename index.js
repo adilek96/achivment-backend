@@ -309,11 +309,7 @@ app.get("/api/achievements-events", (req, res) => {
     return;
   }
 
-  // Приветственное событие
-  const welcomeEvent = JSON.stringify(`event: clients\ndata: ${clientId}\n`);
-
-  res.write("retry: 1000\n");
-  res.write(welcomeEvent);
+  res.write(`event: welcome\ndata: ${clientId}\n\n`);
 
   // Сохраняем клиента
   const client = { id: clientId, res };
@@ -343,7 +339,7 @@ setInterval(() => {
   }
 
   const clientId = clients.find((c) => c.id === 1290846726);
-  const payload = JSON.stringify(`event: clients\ndata: ${clientId}\n`);
+  const payload = `data: clients\ndata: ${clientId}\n`;
 
   clients.find(({ id, res }) => {
     if (id === 1290846726) {
