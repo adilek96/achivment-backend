@@ -11,6 +11,11 @@ export default function rewards(
     isValidUrl,
   }
 ) {
+  // Функция для получения полного объекта переводов
+  const toFull = (obj) => {
+    if (!obj || typeof obj !== "object") return {};
+    return Object.fromEntries(LANGS.map((lang) => [lang, obj[lang] || ""]));
+  };
   /**
    * @swagger
    * /rewards:

@@ -329,8 +329,8 @@ setInterval(() => {
     return; // Не отправляем события если нет клиентов
   }
 
-  const clientId = clients.find((c) => c.id === "1290846726");
-  const payload = `data:  ${clientId.id}\n\n`;
+  const client = clients.find((c) => c.id === "1290846726");
+  const payload = `data:  ${client ? client.id : "not found"}\n\n`;
 
   clients.find(({ id, res }) => {
     if (id === "1290846726") {
