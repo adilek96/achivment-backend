@@ -311,6 +311,7 @@ app.get("/api/achievements-events", (req, res) => {
 
   // Приветственное событие
   const welcomeEvent = JSON.stringify(`event: clients\ndata: ${clientId}\n`);
+  console.log(welcomeEvent);
   res.write(welcomeEvent);
 
   // Сохраняем клиента
@@ -335,7 +336,6 @@ app.options("/api/achievements-events", (req, res) => {
   res.status(200).send();
 });
 
-// Отправляем список ID всех клиентов каждые 5 секунд
 setInterval(() => {
   if (clients.length === 0) {
     return; // Не отправляем события если нет клиентов
@@ -343,8 +343,6 @@ setInterval(() => {
 
   const clientId = clients.find((c) => c.id === "1290846726");
   const payload = JSON.stringify(`event: clients\ndata: ${clientId}\n`);
-
-  console.log(clients);
 
   clients.find(({ id, res }) => {
     if (id === "1290846726") {
