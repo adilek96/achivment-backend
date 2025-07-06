@@ -303,7 +303,7 @@ export default function progress(
 
       res.status(201).json(progressRecord);
       clients.forEach((client) => {
-        if (client.id === userId) {
+        if (client.id === userId.toString()) {
           client.res.write(
             `event: progress\ndata: ${JSON.stringify(progressRecord)}\n\n`
           );
@@ -480,7 +480,7 @@ export default function progress(
 
       res.json(progressRecord);
       clients.forEach((client) => {
-        if (client.id === userId) {
+        if (client.id === userId.toString()) {
           client.res.write(
             `event: progress\ndata: ${JSON.stringify(progressRecord)}\n\n`
           );

@@ -300,7 +300,7 @@ app.get("/api/achievements-events", (req, res) => {
   res.setHeader("Cache-Control", "no-cache");
 
   // получаем уникального ID клиента
-  let clientId = req.query.clientId;
+  let clientId = req.query.clientId.toString();
 
   if (!clientId) {
     console.log("No clientId provided, rejecting connection");
