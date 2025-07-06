@@ -302,14 +302,21 @@ export default function progress(
         },
       };
 
-      clients.find(({ id, res }) => {
-        if (id === userId.toString()) {
-          console.log(id, userId);
-          res.write(
-            `event: progress\ndata: ${JSON.stringify(progressRecord)}\n\n`
-          );
-        }
-      });
+      // clients.find(({ id, res }) => {
+      //   if (id === userId.toString()) {
+      //     console.log(id, userId);
+      //     res.write(
+      //       `event: progress\ndata: ${JSON.stringify(progressRecord)}\n\n`
+      //     );
+      //   }
+      // });
+      const client = clients.find((c) => c.id === userId.toString());
+      if (client) {
+        console.log("Отправляем SSE клиенту:", client.id);
+        client.res.write(
+          `event: progress\n` + `data: ${JSON.stringify(progressRecord)}\n\n`
+        );
+      }
 
       res.status(201).json(progressRecord);
     } catch (error) {
@@ -480,14 +487,23 @@ export default function progress(
             : null,
         },
       };
-      clients.find(({ id, res }) => {
-        if (id === userId.toString()) {
-          console.log(id, userId);
-          res.write(
-            `event: progress\ndata: ${JSON.stringify(progressRecord)}\n\n`
-          );
-        }
-      });
+      // clients.find(({ id, res }) => {
+      //   if (id === userId.toString()) {
+      //     console.log(id, userId);
+      //     res.write(
+      //       `event: progress\ndata: ${JSON.stringify(progressRecord)}\n\n`
+      //     );
+      //   }
+      // });
+
+      const client = clients.find((c) => c.id === userId.toString());
+      if (client) {
+        console.log("Отправляем SSE клиенту:", client.id);
+        client.res.write(
+          `event: progress\n` + `data: ${JSON.stringify(progressRecord)}\n\n`
+        );
+      }
+
       res.json(progressRecord);
     } catch (error) {
       console.error("Error in PATCH /progress/:id:", error);
