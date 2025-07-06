@@ -285,8 +285,13 @@ app.get("/api/achievements-events", (req, res) => {
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("Connection", "keep-alive");
 
-  // Генерация уникального ID клиента
-  const clientId = Date.now() + Math.random().toString(36).substring(2, 10);
+  // получаем уникального ID клиента
+  let clientId = req.query.clientId;
+
+  if (!clientId) {
+    res.status(400).json({ error: "Client ID is required" });
+    return;
+  }
 
   // Приветственное событие
   res.write(`event: welcome\ndata: yourId:${clientId}\n\n`);
