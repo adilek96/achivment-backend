@@ -344,6 +344,8 @@ setInterval(() => {
   const clientId = clients.find((c) => c.id === "1290846726");
   const payload = JSON.stringify(`event: clients\ndata: ${clientId}\n`);
 
+  console.log(clients);
+
   clients.find(({ id, res }) => {
     if (id === "1290846726") {
       try {
