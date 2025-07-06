@@ -87,11 +87,17 @@ const options = {
     info: {
       title: "Achievement API",
       version: "1.0.0",
-      description: "Документация для Achievement API",
+      description:
+        "Полнофункциональная система отслеживания достижений с API, SSE (Server-Sent Events) и админ-панелью. Поддерживает многоязычность, real-time уведомления и полный CRUD для всех сущностей.",
     },
     servers: [
       {
-        url: "http://localhost:3000",
+        url: "http://localhost:3005",
+        description: "Development server",
+      },
+      {
+        url: "https://test.aquadaddy.app",
+        description: "Production server",
       },
     ],
     components: {
@@ -101,19 +107,25 @@ const options = {
           properties: {
             id: {
               type: "string",
-              description: "Уникальный идентификатор категории",
+              description: "Уникальный идентификатор категории (CUID)",
+              example: "cmcdbzw5c0000lzgwqdktz0zl",
             },
             key: {
               type: "string",
-              description: "Ключ категории",
+              description: "Уникальный ключ категории",
+              example: "beginner",
             },
             name: {
               type: "object",
               description: "Объект с переводами названия",
               example: {
-                en: "English",
-                ru: "Русский",
-                tr: "Türkçe",
+                en: "Beginner",
+                ru: "Начинающий",
+                tr: "Başlangıç",
+                fr: "Débutant",
+                de: "Anfänger",
+                ar: "مبتدئ",
+                gr: "Αρχάριος",
               },
             },
             achievements: {
@@ -121,46 +133,80 @@ const options = {
               items: {
                 $ref: "#/components/schemas/Achievement",
               },
+              description: "Список достижений в категории",
             },
           },
+          required: ["id", "key", "name"],
         },
         Achievement: {
           type: "object",
           properties: {
             id: {
               type: "string",
+              description: "Уникальный идентификатор достижения (CUID)",
+              example: "cmcdbzw5c0000lzgwqdktz0zl",
             },
             title: {
               type: "object",
               description: "Объект с переводами заголовка",
+              example: {
+                en: "First Achievement",
+                ru: "Первое достижение",
+              },
             },
             description: {
               type: "object",
               description: "Объект с переводами описания",
+              example: {
+                en: "Complete your first task",
+                ru: "Выполните первое задание",
+              },
             },
             icon: {
               type: "string",
+              description: "URL иконки или эмодзи",
+              example: "🎯",
             },
             hidden: {
               type: "boolean",
+              description: "Скрытое достижение",
+              example: false,
             },
             target: {
               type: "integer",
+              description: "Целевое значение для завершения",
+              example: 1,
             },
             categoryId: {
               type: "string",
+              description: "ID связанной категории (CUID)",
+              example: "cmcdbzw5c0000lzgwqdktz0zl",
+            },
+            category: {
+              $ref: "#/components/schemas/Category",
+              description: "Связанная категория",
             },
             reward: {
               $ref: "#/components/schemas/Reward",
               description: "Награда за достижение (может быть null)",
             },
+            progress: {
+              type: "array",
+              items: {
+                $ref: "#/components/schemas/UserAchievementProgress",
+              },
+              description: "Прогресс пользователей по достижению",
+            },
           },
+          required: ["id", "title", "description", "categoryId"],
         },
         Reward: {
           type: "object",
           properties: {
             id: {
               type: "string",
+              description: "Уникальный идентификатор награды (CUID)",
+              example: "cmcdbzw5c0000lzgwqdktz0zl",
             },
             type: {
               type: "string",
@@ -172,37 +218,225 @@ const options = {
                 "visual_effects",
               ],
               description: "Тип награды",
+              example: "badge",
             },
             title: {
               type: "object",
               description: "Объект с переводами заголовка награды",
+              example: {
+                en: "First Badge",
+                ru: "Первый значок",
+              },
             },
             description: {
               type: "object",
               description: "Объект с переводами описания награды",
+              example: {
+                en: "Your first achievement badge",
+                ru: "Ваш первый значок достижения",
+              },
             },
             icon: {
               type: "string",
-              description: "URL иконки награды",
+              description: "URL иконки награды или эмодзи",
+              example: "🏆",
             },
             isApplicable: {
               type: "boolean",
               description: "Применимость награды",
+              example: true,
             },
             details: {
               type: "object",
-              description: "Дополнительные детали награды",
+              description: "Дополнительные детали награды (JSON)",
+              example: {
+                amount: 100,
+                currency: "USDT",
+              },
             },
             achievementId: {
               type: "string",
-              description: "ID связанного достижения",
+              description: "ID связанного достижения (CUID)",
+              example: "cmcdbzw5c0000lzgwqdktz0zl",
+            },
+            achievement: {
+              $ref: "#/components/schemas/Achievement",
+              description: "Связанное достижение",
+            },
+          },
+          required: ["id", "type", "title", "description", "achievementId"],
+        },
+        UserAchievementProgress: {
+          type: "object",
+          properties: {
+            id: {
+              type: "string",
+              description: "Уникальный идентификатор прогресса (CUID)",
+              example: "cmcdbzw5c0000lzgwqdktz0zl",
+            },
+            userId: {
+              type: "string",
+              description: "ID пользователя",
+              example: "user123",
+            },
+            achievementId: {
+              type: "string",
+              description: "ID достижения (CUID)",
+              example: "cmcdbzw5c0000lzgwqdktz0zl",
+            },
+            progress: {
+              type: "string",
+              enum: ["INPROGRESS", "BLOCKED", "FINISHED"],
+              description: "Статус прогресса",
+              example: "INPROGRESS",
+            },
+            currentStep: {
+              type: "integer",
+              description: "Текущий шаг прогресса",
+              example: 2,
+            },
+            createdAt: {
+              type: "string",
+              format: "date-time",
+              description: "Дата создания",
+              example: "2024-01-15T10:30:00.000Z",
+            },
+            updatedAt: {
+              type: "string",
+              format: "date-time",
+              description: "Дата обновления",
+              example: "2024-01-15T10:30:00.000Z",
+            },
+            achievement: {
+              $ref: "#/components/schemas/Achievement",
+              description: "Связанное достижение",
+            },
+          },
+          required: ["id", "userId", "achievementId", "progress"],
+        },
+        Error: {
+          type: "object",
+          properties: {
+            error: {
+              type: "string",
+              description: "Описание ошибки",
+              example: "Invalid categoryId format",
+            },
+          },
+          required: ["error"],
+        },
+        Stats: {
+          type: "object",
+          properties: {
+            categories: {
+              type: "integer",
+              description: "Количество категорий",
+              example: 5,
+            },
+            achievements: {
+              type: "integer",
+              description: "Количество достижений",
+              example: 25,
+            },
+            rewards: {
+              type: "integer",
+              description: "Количество наград",
+              example: 20,
+            },
+            progress: {
+              type: "integer",
+              description: "Общее количество записей прогресса",
+              example: 150,
+            },
+            progressStats: {
+              type: "object",
+              properties: {
+                completed: {
+                  type: "integer",
+                  description: "Завершенные достижения",
+                  example: 80,
+                },
+                inProgress: {
+                  type: "integer",
+                  description: "Достижения в процессе",
+                  example: 60,
+                },
+                blocked: {
+                  type: "integer",
+                  description: "Заблокированные достижения",
+                  example: 10,
+                },
+              },
+            },
+            achievementStats: {
+              type: "object",
+              properties: {
+                hidden: {
+                  type: "integer",
+                  description: "Скрытые достижения",
+                  example: 5,
+                },
+                visible: {
+                  type: "integer",
+                  description: "Видимые достижения",
+                  example: 20,
+                },
+              },
+            },
+            rewardStats: {
+              type: "object",
+              properties: {
+                applicable: {
+                  type: "integer",
+                  description: "Применимые награды",
+                  example: 18,
+                },
+                total: {
+                  type: "integer",
+                  description: "Общее количество наград",
+                  example: 20,
+                },
+              },
             },
           },
         },
       },
+      parameters: {
+        LangParam: {
+          name: "lang",
+          in: "query",
+          description: "Код языка для переводов",
+          schema: {
+            type: "string",
+            enum: ["en", "ru", "tr", "fr", "de", "ar", "gr"],
+          },
+          example: "ru",
+        },
+        IdParam: {
+          name: "id",
+          in: "path",
+          required: true,
+          description: "Уникальный идентификатор (CUID)",
+          schema: {
+            type: "string",
+            pattern: "^c[a-z0-9]{24}$",
+          },
+          example: "cmcdbzw5c0000lzgwqdktz0zl",
+        },
+        ClientIdParam: {
+          name: "clientId",
+          in: "query",
+          required: true,
+          description: "Уникальный идентификатор клиента для SSE",
+          schema: {
+            type: "string",
+          },
+          example: "user123",
+        },
+      },
     },
   },
-  apis: ["./index.js"],
+  apis: ["./index.js", "./api/*.js"],
 };
 
 const LANGS = ["ru", "en", "tr", "fr", "de", "ar", "gr"];
@@ -282,6 +516,55 @@ const dependencies = {
 // Хранилище клиентов
 let clients = [];
 
+/**
+ * @swagger
+ * /api/achievements-events:
+ *   get:
+ *     summary: Server-Sent Events endpoint для real-time уведомлений
+ *     description: |
+ *       Устанавливает SSE соединение для получения real-time уведомлений о достижениях.
+ *       Поддерживает множественные подключения, автоматические heartbeat сообщения
+ *       и graceful отключение при закрытии соединения.
+ *     parameters:
+ *       - $ref: '#/components/parameters/ClientIdParam'
+ *     responses:
+ *       200:
+ *         description: SSE соединение установлено
+ *         content:
+ *           text/event-stream:
+ *             schema:
+ *               type: string
+ *             examples:
+ *               connection_established:
+ *                 summary: Сообщение о подключении
+ *                 value: "data: соединение установлено\n\ndata: user123\n\n"
+ *               heartbeat:
+ *                 summary: Heartbeat сообщение
+ *                 value: "data: heartbeat 2024-01-15T10:30:00.000Z\n\n"
+ *               achievement_event:
+ *                 summary: Событие достижения
+ *                 value: 'data: {"type": "achievement_completed", "userId": "user123", "achievementId": "cmcdbzw5c0000lzgwqdktz0zl"}\n\n'
+ *       400:
+ *         description: Client ID не предоставлен
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *             example:
+ *               error: "Client ID is required"
+ *     x-code-samples:
+ *       - lang: JavaScript
+ *         source: |
+ *           const eventSource = new EventSource('/api/achievements-events?clientId=user123');
+ *
+ *           eventSource.onmessage = function(event) {
+ *             console.log('Получено событие:', event.data);
+ *           };
+ *
+ *           eventSource.onerror = function(error) {
+ *             console.error('Ошибка SSE:', error);
+ *           };
+ */
 // SSE endpoint
 app.get("/api/achievements-events", (req, res) => {
   console.log(
@@ -332,6 +615,32 @@ app.get("/api/achievements-events", (req, res) => {
   });
 });
 
+/**
+ * @swagger
+ * /api/achievements-events:
+ *   options:
+ *     summary: CORS preflight для SSE endpoint
+ *     description: Обрабатывает CORS preflight запросы для SSE соединений
+ *     responses:
+ *       200:
+ *         description: CORS headers установлены
+ *         headers:
+ *           Access-Control-Allow-Origin:
+ *             description: Разрешенные origins
+ *             schema:
+ *               type: string
+ *               example: "*"
+ *           Access-Control-Allow-Methods:
+ *             description: Разрешенные методы
+ *             schema:
+ *               type: string
+ *               example: "GET, OPTIONS"
+ *           Access-Control-Allow-Headers:
+ *             description: Разрешенные заголовки
+ *             schema:
+ *               type: string
+ *               example: "Cache-Control"
+ */
 // OPTIONS handler для SSE
 app.options("/api/achievements-events", (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");

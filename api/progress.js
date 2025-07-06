@@ -302,21 +302,12 @@ export default function progress(
         },
       };
 
-      // clients.find(({ id, res }) => {
-      //   if (id === userId.toString()) {
-      //     console.log(id, userId);
-      //     res.write(
-      //       `event: progress\ndata: ${JSON.stringify(progressRecord)}\n\n`
-      //     );
-      //   }
-      // });
       const client = clients.find((c) => c.id === userId.toString());
       if (client) {
         console.log("Отправляем SSE клиенту:", client.id);
         client.res.write(
           `event: progress\n` + `data: ${JSON.stringify(progressRecord)}\n\n`
         );
-        client.res.write(`event: work\n` + `data: work\n\n`);
       }
 
       res.status(201).json(progressRecord);
@@ -488,14 +479,6 @@ export default function progress(
             : null,
         },
       };
-      // clients.find(({ id, res }) => {
-      //   if (id === userId.toString()) {
-      //     console.log(id, userId);
-      //     res.write(
-      //       `event: progress\ndata: ${JSON.stringify(progressRecord)}\n\n`
-      //     );
-      //   }
-      // });
 
       const client = clients.find((c) => c.id === userId.toString());
       if (client) {
@@ -503,7 +486,6 @@ export default function progress(
         client.res.write(
           `event: progress\n` + `data: ${JSON.stringify(progressRecord)}\n\n`
         );
-        client.res.write(`event: work\n` + `data: work\n\n`);
       }
 
       res.json(progressRecord);
