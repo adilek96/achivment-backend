@@ -312,6 +312,7 @@ app.get("/api/achievements-events", (req, res) => {
   // Приветственное событие
   const welcomeEvent = JSON.stringify(`event: clients\ndata: ${clientId}\n`);
 
+  res.write("retry: 1000\n");
   res.write(welcomeEvent);
 
   // Сохраняем клиента
