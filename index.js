@@ -291,10 +291,13 @@ app.get("/api/achievements-events", (req, res) => {
     req.query.clientId
   );
 
+  // Принудительно используем HTTP/1.1 для SSE
+  res.setHeader("Connection", "keep-alive");
+  res.setHeader("X-Accel-Buffering", "no"); // Отключаем буферизацию nginx
+
   // SSE-заголовки
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
-  res.setHeader("Connection", "keep-alive");
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Headers", "Cache-Control");
   res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
