@@ -300,8 +300,6 @@ export default function progress(
             : null,
         },
       };
-
-      res.status(201).json(progressRecord);
       clients.forEach((client) => {
         if (client.id === userId.toString()) {
           client.res.write(
@@ -309,6 +307,7 @@ export default function progress(
           );
         }
       });
+      res.status(201).json(progressRecord);
     } catch (error) {
       console.error("Error in POST /progress:", error);
       res.status(500).json({ error: error.message });
@@ -477,8 +476,6 @@ export default function progress(
             : null,
         },
       };
-
-      res.json(progressRecord);
       clients.forEach((client) => {
         if (client.id === userId.toString()) {
           client.res.write(
@@ -486,6 +483,7 @@ export default function progress(
           );
         }
       });
+      res.json(progressRecord);
     } catch (error) {
       console.error("Error in PATCH /progress/:id:", error);
       res.status(500).json({ error: error.message });
