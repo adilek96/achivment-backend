@@ -258,8 +258,12 @@ app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 // Middleware
 app.use(express.json());
 
-// Добавляем middleware для установки правильных заголовков
+// Добавляем middleware для установки правильных заголовков (кроме SSE)
 app.use((req, res, next) => {
+  // Не устанавливаем Content-Type для SSE endpoint
+  if (req.path === "/api/achievements-events") {
+    return next();
+  }
   res.setHeader("Content-Type", "application/json");
   next();
 });
@@ -282,8 +286,10 @@ let clients = [];
 app.get("/api/achievements-events", (req, res) => {
   // SSE-заголовки
   res.setHeader("Content-Type", "text/event-stream");
-  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
   res.setHeader("Connection", "keep-alive");
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Headers", "Cache-Control");
 
   // получаем уникального ID клиента
   let clientId = req.query.clientId;
@@ -294,7 +300,9 @@ app.get("/api/achievements-events", (req, res) => {
   }
 
   // Приветственное событие
-  res.write(`event: welcome\ndata: yourId:${clientId}\n\n`);
+  res.write(
+    `event: welcome\ndata: ${JSON.stringify({ yourId: clientId })}\n\n`
+  );
 
   // Сохраняем клиента
   const client = { id: clientId, res };
@@ -303,7 +311,12 @@ app.get("/api/achievements-events", (req, res) => {
   // Удаляем клиента при отключении
   req.on("close", () => {
     clients = clients.filter((c) => c.id !== clientId);
+    console.log(
+      `Client ${clientId} disconnected. Total clients: ${clients.length}`
+    );
   });
+
+  console.log(`Client ${clientId} connected. Total clients: ${clients.length}`);
 });
 
 // Отправляем список ID всех клиентов каждые 5 секунд
@@ -311,10 +324,11 @@ setInterval(() => {
   const clientIds = clients.map((c) => c.id);
   const payload = `event: clients\ndata: ${JSON.stringify(clientIds)}\n\n`;
 
-  clients.forEach(({ res }) => {
+  clients.forEach(({ id, res }) => {
     try {
       res.write(payload);
     } catch (err) {
+      console.log(`Error sending to client ${id}:`, err.message);
       // Ошибка при записи — удаляем клиента
       clients = clients.filter((c) => c.res !== res);
     }
