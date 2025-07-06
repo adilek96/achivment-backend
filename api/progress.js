@@ -316,7 +316,7 @@ export default function progress(
         client.res.write(
           `event: progress\n` + `data: ${JSON.stringify(progressRecord)}\n\n`
         );
-        client.res.write(`event: work\n` + `data: "work"\n\n`);
+        client.res.write(`event: work\n` + `data: work\n\n`);
       }
 
       res.status(201).json(progressRecord);
@@ -503,7 +503,7 @@ export default function progress(
         client.res.write(
           `event: progress\n` + `data: ${JSON.stringify(progressRecord)}\n\n`
         );
-        client.res.write(`event: work\n` + `data: "work"\n\n`);
+        client.res.write(`event: work\n` + `data: work\n\n`);
       }
 
       res.json(progressRecord);
