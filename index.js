@@ -982,7 +982,7 @@ app.post("/progress", async (req, res) => {
         clients = clients.filter((c) => c.id !== client.id);
       }
     }
-    client.res.write(`data: "это сообзение из пост\n\n`);
+
     /* ---------- Финальный HTTP‑ответ ---------- */
     return res.status(201).json(progressRecord);
   } catch (error) {
@@ -1158,7 +1158,7 @@ app.patch("/progress/:id", async (req, res) => {
         clients = clients.filter((c) => c.id !== client.id);
       }
     }
-    client.res.write(`data: "это сообзение из пост\n\n`);
+
     res.json(progressRecord);
   } catch (error) {
     console.error("Error in PATCH /progress/:id:", error);
