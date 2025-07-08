@@ -668,7 +668,7 @@ app.options("/api/achievements-events", (req, res) => {
 
 setInterval(() => {
   clients.forEach((client) => {
-    client.res.write(":\n\n"); // ping
+    client.res.write("data: SSE heartbeat\n\n"); // ping
   });
 }, 30000); // каждые 30 сек
 
