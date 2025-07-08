@@ -567,52 +567,50 @@ let clients = [];
  */
 // SSE endpoint
 app.get("/api/achievements-events", (req, res) => {
+  const clientId = req.query.clientId?.toString();
+
+  if (!clientId) {
+    return res.status(400).json({ error: "Client ID is required" });
+  }
+
   console.log(
     "SSE connection attempt from:",
     req.ip,
     "with clientId:",
-    req.query.clientId
+    clientId
   );
 
-  // получаем уникального ID клиента
-  let clientId = req.query.clientId;
-
-  if (!clientId) {
-    console.log("No clientId provided, rejecting connection");
-    res.status(400).json({ error: "Client ID is required" });
-    return;
-  }
-
-  // Принудительно конвертируем в строку
-  clientId = clientId.toString();
-
-  // Удаляем существующего клиента с таким же ID
+  // Удаляем существующего клиента
   clients = clients.filter((c) => c.id !== clientId);
 
-  // Устанавливаем заголовки до отправки данных
+  // Заголовки
   res.writeHead(200, {
     "Content-Type": "text/event-stream",
     "Cache-Control": "no-cache",
     Connection: "keep-alive",
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Headers": "Cache-Control",
-    "X-Accel-Buffering": "no", // Отключаем буферизацию nginx
+    "X-Accel-Buffering": "no",
   });
+  res.flushHeaders();
 
-  console.log("Sending welcome messages to client:", clientId);
-
-  // Отправляем приветственные сообщения
+  // Приветствие
   res.write(`data: соединение установлено\n\n`);
   res.write(`data: ${clientId}\n\n`);
 
   // Сохраняем клиента
   const client = { id: clientId, res };
   clients.push(client);
-
   console.log(`Client ${clientId} connected. Total clients: ${clients.length}`);
 
-  // Удаляем клиента при отключении
+  // Ping каждые 30 сек
+  const interval = setInterval(() => {
+    res.write(":\n\n");
+  }, 30000);
+
+  // Очистка при отключении
   req.on("close", () => {
+    clearInterval(interval);
     clients = clients.filter((c) => c.id !== clientId);
     console.log(
       `Client ${clientId} disconnected. Total clients: ${clients.length}`
@@ -621,16 +619,17 @@ app.get("/api/achievements-events", (req, res) => {
 
   // Обработка ошибок
   req.on("error", (err) => {
-    console.log(`Error with client ${clientId}:`, err.message);
+    clearInterval(interval);
     clients = clients.filter((c) => c.id !== clientId);
+    console.error(`Request error with client ${clientId}:`, err.message);
   });
 
   res.on("error", (err) => {
-    console.log(`Response error with client ${clientId}:`, err.message);
+    clearInterval(interval);
     clients = clients.filter((c) => c.id !== clientId);
+    console.error(`Response error with client ${clientId}:`, err.message);
   });
 });
-
 /**
  * @swagger
  * /api/achievements-events:
@@ -657,18 +656,17 @@ app.get("/api/achievements-events", (req, res) => {
  *               type: string
  *               example: "Cache-Control"
  */
-// OPTIONS handler для SSE
+// Preflight CORS
 app.options("/api/achievements-events", (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Cache-Control");
-  res.flushHeaders();
-  res.status(200).send();
+  res.status(204).end();
 });
 
 setInterval(() => {
   clients.forEach((client) => {
-    client.res.write("data: SSE heartbeat\n\n"); // ping
+    client.res.write(`data: SSE heartbeat\n\n`); // ping
   });
 }, 30000); // каждые 30 сек
 
