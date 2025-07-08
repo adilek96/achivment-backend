@@ -305,10 +305,12 @@ export default function progress(
       /* ---------- SSE‑оповещение ---------- */
       try {
         const client = clients.find((c) => c.id === userId.toString());
+        console.log("client", client);
         if (client) {
           client.res.write(
             `event: progress\n` + `data: ${JSON.stringify(progressRecord)}\n\n`
           );
+          console.log("progressRecord", progressRecord);
         }
       } catch (sseErr) {
         console.warn("SSE write failed:", sseErr.message);
@@ -490,6 +492,7 @@ export default function progress(
       const client = clients.find(
         (c) => c.id.toString() === targetUserId.toString()
       );
+
       if (client) {
         try {
           client.res.write(

@@ -666,14 +666,6 @@ app.options("/api/achievements-events", (req, res) => {
 
 setInterval(() => {
   clients.forEach((client) => {
-    try {
-      if (client) {
-        client.res.write(`event: progress\n` + `data: OK\n\n`);
-      }
-    } catch (sseErr) {
-      console.warn("SSE write failed:", sseErr.message);
-      clients = clients.filter((c) => c.id !== userId.toString());
-    }
     client.res.write(`data: SSE heartbeat\n\n`); // ping
   });
 }, 30000); // каждые 30 сек
