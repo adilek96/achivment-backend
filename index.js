@@ -650,26 +650,6 @@ app.options("/api/achievements-events", (req, res) => {
   res.status(200).send();
 });
 
-setInterval(() => {
-  if (clients.length === 0) {
-    return; // Не отправляем события если нет клиентов
-  }
-
-  console.log(`Sending heartbeat to ${clients.length} clients`);
-
-  clients.forEach(({ id, res }) => {
-    try {
-      const payload = `data: heartbeat ${new Date().toISOString()}\n\n`;
-      res.write(payload);
-      console.log(`Sent heartbeat to client ${id}`);
-    } catch (err) {
-      console.log(`Error sending heartbeat to client ${id}:`, err.message);
-      // Ошибка при записи — удаляем клиента
-      clients = clients.filter((c) => c.res !== res);
-    }
-  });
-}, 3000);
-
 health(app, prisma);
 categories(app, prisma, dependencies);
 achievments(app, prisma, dependencies);
