@@ -302,7 +302,7 @@ export default function progress(
         },
       };
 
-      const client = clients.find((c) => c.id === userId.toString());
+      const client = clients.find((c) => c.id.toString() === userId.toString());
       if (client) {
         console.log("Отправляем SSE клиенту:", client.id);
         client.res.write(
@@ -480,7 +480,7 @@ export default function progress(
         },
       };
 
-      const client = clients.find((c) => c.id === userId.toString());
+      const client = clients.find((c) => c.id.toString() === userId.toString());
       if (client) {
         console.log("Отправляем SSE клиенту:", client.id);
         client.res.write(
