@@ -304,10 +304,15 @@ export default async function progress(
 
       /* ---------- SSE‑оповещение ---------- */
 
-      const client = clients.find((c) => c.id === userId.toString());
-
+      const client = clients.find((c) => c.id.toString() === userId.toString());
       if (client) {
-        client.res.write(`data: ok}\n\n`);
+        try {
+          client.res.write(
+            `event: progress\ndata: ${JSON.stringify(progressRecord)}\n\n`
+          );
+        } catch (err) {
+          clients = clients.filter((c) => c.id !== client.id);
+        }
       }
 
       /* ---------- Финальный HTTP‑ответ ---------- */
@@ -485,12 +490,10 @@ export default async function progress(
       const client = clients.find(
         (c) => c.id.toString() === targetUserId.toString()
       );
-
       if (client) {
         try {
           client.res.write(
-            `event: progress\n` + // тип
-              `data: ${JSON.stringify(progressRecord)}\n\n`
+            `event: progress\ndata: ${JSON.stringify(progressRecord)}\n\n`
           );
         } catch (err) {
           clients = clients.filter((c) => c.id !== client.id);
