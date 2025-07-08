@@ -574,16 +574,6 @@ app.get("/api/achievements-events", (req, res) => {
     req.query.clientId
   );
 
-  // Принудительно используем HTTP/1.1 для SSE
-  res.setHeader("Connection", "keep-alive");
-  res.setHeader("X-Accel-Buffering", "no"); // Отключаем буферизацию nginx
-
-  // SSE-заголовки
-  res.setHeader("Content-Type", "text/event-stream");
-  res.setHeader("Cache-Control", "no-cache");
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Headers", "Cache-Control");
-
   // получаем уникального ID клиента
   let clientId = req.query.clientId;
 
@@ -596,6 +586,19 @@ app.get("/api/achievements-events", (req, res) => {
   // Принудительно конвертируем в строку
   clientId = clientId.toString();
 
+  // Удаляем существующего клиента с таким же ID
+  clients = clients.filter((c) => c.id !== clientId);
+
+  // Устанавливаем заголовки до отправки данных
+  res.writeHead(200, {
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache",
+    Connection: "keep-alive",
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Headers": "Cache-Control",
+    "X-Accel-Buffering": "no", // Отключаем буферизацию nginx
+  });
+
   console.log("Sending welcome messages to client:", clientId);
 
   // Отправляем приветственные сообщения
@@ -606,12 +609,25 @@ app.get("/api/achievements-events", (req, res) => {
   const client = { id: clientId, res };
   clients.push(client);
 
+  console.log(`Client ${clientId} connected. Total clients: ${clients.length}`);
+
   // Удаляем клиента при отключении
   req.on("close", () => {
     clients = clients.filter((c) => c.id !== clientId);
     console.log(
       `Client ${clientId} disconnected. Total clients: ${clients.length}`
     );
+  });
+
+  // Обработка ошибок
+  req.on("error", (err) => {
+    console.log(`Error with client ${clientId}:`, err.message);
+    clients = clients.filter((c) => c.id !== clientId);
+  });
+
+  res.on("error", (err) => {
+    console.log(`Response error with client ${clientId}:`, err.message);
+    clients = clients.filter((c) => c.id !== clientId);
   });
 });
 
