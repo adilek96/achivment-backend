@@ -666,6 +666,12 @@ app.options("/api/achievements-events", (req, res) => {
   res.status(200).send();
 });
 
+setInterval(() => {
+  clients.forEach((client) => {
+    client.res.write(":\n\n"); // ping
+  });
+}, 30000); // каждые 30 сек
+
 health(app, prisma);
 categories(app, prisma, dependencies);
 achievments(app, prisma, dependencies);
