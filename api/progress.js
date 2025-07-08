@@ -306,7 +306,9 @@ export default function progress(
       try {
         const client = clients.find((c) => c.id === userId.toString());
         if (client) {
-          client.res.write(`data: ${JSON.stringify(progressRecord)}\n\n`);
+          client.res.write(
+            `event: progress\n` + `data: ${JSON.stringify(progressRecord)}\n\n`
+          );
         }
       } catch (sseErr) {
         console.warn("SSE write failed:", sseErr.message);
@@ -490,7 +492,10 @@ export default function progress(
       );
       if (client) {
         try {
-          client.res.write(`data: ${JSON.stringify(progressRecord)}\n\n`);
+          client.res.write(
+            `event: progress\n` + // тип
+              `data: ${JSON.stringify(progressRecord)}\n\n`
+          );
         } catch (err) {
           clients = clients.filter((c) => c.id !== client.id);
         }
