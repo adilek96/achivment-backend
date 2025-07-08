@@ -1,4 +1,4 @@
-export default function progress(
+export default async function progress(
   app,
   prisma,
   { pickLang, normalizeNameTranslations, isValidCuid },
