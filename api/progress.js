@@ -302,16 +302,19 @@ export default function progress(
         },
       };
 
-      const client = clients.find((c) => c.id.toString() === userId.toString());
-      if (client) {
-        try {
+      /* ---------- SSE‑оповещение ---------- */
+      try {
+        const client = clients.find((c) => c.id === userId.toString());
+        if (client) {
           client.res.write(`data: ${JSON.stringify(progressRecord)}\n\n`);
-        } catch (err) {
-          clients = clients.filter((c) => c.id !== client.id);
         }
+      } catch (sseErr) {
+        console.warn("SSE write failed:", sseErr.message);
+        clients = clients.filter((c) => c.id !== userId.toString());
       }
 
-      res.status(201).json(progressRecord);
+      /* ---------- Финальный HTTP‑ответ ---------- */
+      return res.status(201).json(progressRecord);
     } catch (error) {
       console.error("Error in POST /progress:", error);
       res.status(500).json({ error: error.message });
