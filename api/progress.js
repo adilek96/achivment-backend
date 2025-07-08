@@ -303,18 +303,11 @@ export default async function progress(
       };
 
       /* ---------- SSE‑оповещение ---------- */
-      try {
-        const client = clients.find((c) => c.id === userId.toString());
-        console.log("client", client);
-        if (client) {
-          client.res.write(
-            `event: progress\n` + `data: ${JSON.stringify(progressRecord)}\n\n`
-          );
-          console.log("progressRecord", progressRecord);
-        }
-      } catch (sseErr) {
-        console.warn("SSE write failed:", sseErr.message);
-        clients = clients.filter((c) => c.id !== userId.toString());
+
+      const client = clients.find((c) => c.id === userId.toString());
+
+      if (client) {
+        client.res.write(`data: ok}\n\n`);
       }
 
       /* ---------- Финальный HTTP‑ответ ---------- */
